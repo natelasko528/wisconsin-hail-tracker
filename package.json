@@ -1,0 +1,21 @@
+{
+  "name": "wisconsin-hail-tracker",
+  "version": "2.0.0",
+  "description": "Complete CRM with marketing automation and hail storm lead generation",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently npm:dev:backend npm:dev:frontend",
+    "dev:backend": "cd backend && node --watch server.js",
+    "dev:frontend": "cd frontend && next dev",
+    "build": "cd frontend && next build",
+    "skiptrace": "cd backend && node scripts/skiptrace.js",
+    "sync:ghl": "cd backend && node scripts/sync-ghl.js"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

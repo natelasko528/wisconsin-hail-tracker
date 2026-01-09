@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: rgb(204, 204, 204);
+    --foreground: rgb(31, 31, 31);
+    --card: rgb(176, 176, 176);
+    --card-foreground: rgb(31, 31, 31);
+    --primary: rgb(183, 28, 28);
+    --primary-foreground: rgb(255, 255, 255);
+    --secondary: rgb(85, 107, 47);
+    --secondary-foreground: rgb(255, 255, 255);
+    --muted: rgb(184, 184, 184);
+    --muted-foreground: rgb(74, 74, 74);
+    --accent: rgb(70, 130, 180);
+    --accent-foreground: rgb(255, 255, 255);
+    --destructive: rgb(255, 111, 0);
+    --destructive-foreground: rgb(0, 0, 0);
+    --border: rgb(80, 80, 80);
+    --input: rgb(80, 80, 80);
+    --ring: rgb(183, 28, 28);
+    --font-sans: "Oxanium", sans-serif;
+    --font-mono: "Source Code Pro", monospace;
+    --radius: 0px;
+  }
+
+  .dark {
+    --background: rgb(26, 26, 26);
+    --foreground: rgb(224, 224, 224);
+    --card: rgb(42, 42, 42);
+    --card-foreground: rgb(224, 224, 224);
+    --primary: rgb(212, 22, 22);
+    --primary-foreground: rgb(255, 255, 255);
+    --secondary: rgb(72, 129, 19);
+    --secondary-foreground: rgb(0, 0, 0);
+    --muted: rgb(37, 37, 37);
+    --muted-foreground: rgb(160, 160, 160);
+    --accent: rgb(100, 181, 246);
+    --accent-foreground: rgb(0, 0, 0);
+    --destructive: rgb(255, 160, 0);
+    --destructive-foreground: rgb(0, 0, 0);
+    --border: rgb(74, 74, 74);
+    --input: rgb(74, 74, 74);
+    --ring: rgb(229, 57, 53);
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-background text-foreground; }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-bold uppercase tracking-wider;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-3 font-sans font-bold uppercase tracking-wider transition-all;
+    @apply border-2 shadow-md;
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary text-primary-foreground border-primary;
+  }
+  
+  .btn-primary:hover {
+    @apply brightness-110;
+  }
+  
+  .card {
+    @apply bg-card text-card-foreground border-2 border-border shadow-md p-6;
+  }
+  
+  .input {
+    @apply bg-background border-2 border-border px-4 py-3 font-mono text-sm;
+    min-height: 44px;
+  }
+  
+  .badge {
+    @apply px-3 py-1 text-xs font-bold uppercase border-2 inline-block;
+  }
+}

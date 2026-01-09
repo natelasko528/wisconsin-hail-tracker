@@ -1,0 +1,37 @@
+backend/
+├── server.js                 # Express server entry point
+├── config/
+│   ├── database.js          # PostgreSQL connection
+│   ├── redis.js             # Redis/Bull queue config
+│   └── logger.js            # Winston logger
+├── routes/
+│   ├── hail.js              # Hail data endpoints
+│   ├── leads.js             # Lead CRUD operations
+│   ├── skiptrace.js         # Skip tracing endpoints
+│   ├── campaigns.js         # Marketing campaigns
+│   ├── ghl.js               # GoHighLevel sync
+│   └── auth.js              # Authentication
+├── services/
+│   ├── data-fetcher.js      # NOAA data fetching
+│   ├── skiptrace.js         # Skip tracing logic
+│   ├── ghl-sync.js          # GoHighLevel integration
+│   ├── email-service.js     # Email campaigns
+│   ├── sms-service.js       # Twilio SMS
+│   ├── lead-scoring.js      # Lead scoring algorithm
+│   └── export-service.js    # CSV/PDF exports
+├── models/
+│   ├── Lead.js              # Lead model
+│   ├── Campaign.js          # Campaign model
+│   ├── User.js              # User model
+│   └── Storm.js             # Storm/Hail event model
+├── middleware/
+│   ├── auth.js              # JWT verification
+│   ├── errorHandler.js      # Global error handler
+│   ├── rateLimiter.js       # Rate limiting
+│   └── validation.js        # Request validation
+├── jobs/
+│   ├── skiptrace-queue.js   # Bull queue for skip tracing
+│   └── sync-ghl.js          # Scheduled GHL sync
+└── scripts/
+    ├── seed-database.js     # Seed sample data
+    └── fetch-noaa.js        # Fetch NOAA data
