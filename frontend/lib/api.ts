@@ -251,6 +251,75 @@ export const api = {
   stats: {
     dashboard: () => request('/api/stats/dashboard', { method: 'GET' }),
   },
+
+  // Settings
+  settings: {
+    listAPIKeys: () => request('/api/settings/api-keys', { method: 'GET' }),
+
+    addAPIKey: (data: {
+      service: string;
+      keyName: string;
+      apiKey: string;
+      apiSecret?: string;
+      metadata?: any;
+    }) =>
+      request('/api/settings/api-keys', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    updateAPIKey: (id: string, data: any) =>
+      request(`/api/settings/api-keys/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    deleteAPIKey: (id: string) =>
+      request(`/api/settings/api-keys/${id}`, { method: 'DELETE' }),
+
+    testAPIKey: (data: { service: string; apiKey: string; apiSecret?: string }) =>
+      request('/api/settings/test-api-key', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    getSystemSettings: () => request('/api/settings/system', { method: 'GET' }),
+  },
+
+  // AI
+  ai: {
+    scoreLead: (leadId: string) =>
+      request('/api/ai/score-lead', {
+        method: 'POST',
+        body: JSON.stringify({ leadId }),
+      }),
+
+    generateEmail: (leadId: string, campaignType?: string) =>
+      request('/api/ai/generate-email', {
+        method: 'POST',
+        body: JSON.stringify({ leadId, campaignType }),
+      }),
+
+    generateSMS: (leadId: string) =>
+      request('/api/ai/generate-sms', {
+        method: 'POST',
+        body: JSON.stringify({ leadId }),
+      }),
+
+    summarizeNotes: (leadId: string) =>
+      request('/api/ai/summarize-notes', {
+        method: 'POST',
+        body: JSON.stringify({ leadId }),
+      }),
+
+    suggestTags: (leadId: string) =>
+      request('/api/ai/suggest-tags', {
+        method: 'POST',
+        body: JSON.stringify({ leadId }),
+      }),
+
+    status: () => request('/api/ai/status', { method: 'GET' }),
+  },
 };
 
 export default api;

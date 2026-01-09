@@ -15,6 +15,8 @@ import skiptraceRoutes from './routes/skiptrace.js';
 import campaignsRoutes from './routes/campaigns.js';
 import ghlRoutes from './routes/ghl.js';
 import statsRoutes from './routes/stats.js';
+import settingsRoutes from './routes/settings.js';
+import aiRoutes from './routes/ai.js';
 
 // Middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -66,6 +68,8 @@ app.use('/api/skiptrace', skipTraceLimiter, skiptraceRoutes);
 app.use('/api/campaigns', generalLimiter, campaignsRoutes);
 app.use('/api/ghl', generalLimiter, ghlRoutes);
 app.use('/api/stats', generalLimiter, statsRoutes);
+app.use('/api/settings', generalLimiter, settingsRoutes);
+app.use('/api/ai', generalLimiter, aiRoutes);
 
 // Error handling
 app.use(errorHandler);
