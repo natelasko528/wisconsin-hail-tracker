@@ -1,0 +1,30 @@
+# Backend
+backend/
+backend/**
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+backend.log
+frontend.log
+
+# Environment
+.env
+.env.local
+.env.production.local
+backend/.env
+backend/.env.*
+
+# Build output (backend)
+backend/dist/
+backend/build/
+
+# Misc
+.DS_Store
+*.pem
+.idea/
+.vscode/
