@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Oxanium, Source_Code_Pro } from 'next/font/google'
+import { Providers } from '@/components/Providers'
 import './globals.css'
 
 const oxanium = Oxanium({ 
@@ -29,7 +30,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${oxanium.variable} ${sourceCodePro.variable} font-sans antialiased`}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )
