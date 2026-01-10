@@ -1,14 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import morgan from 'morgan';
-
-// Config
-import logger from './config/logger.js';
-import pool from './config/database.js';
 
 // Routes
-import authRoutes from './routes/auth.js';
 import hailRoutes from './routes/hail.js';
 import leadsRoutes from './routes/leads.js';
 import skiptraceRoutes from './routes/skiptrace.js';
@@ -18,16 +12,14 @@ import statsRoutes from './routes/stats.js';
 
 // Middleware
 import { errorHandler } from './middleware/errorHandler.js';
-import { securityHeaders, generalLimiter, authLimiter, skipTraceLimiter, blockRepeatedFailures } from './middleware/security.js';
+
+// Supabase client
+import { isSupabaseConfigured } from './lib/supabase.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-
-// Security middleware
-app.use(securityHeaders);
-app.use(blockRepeatedFailures());
 
 // CORS
 app.use(cors({
@@ -40,7 +32,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request logging
-app.use(morgan('combined', { stream: logger.stream }));
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+  next();
+});
 
 // Health check
 app.get('/health', (req, res) => {
@@ -48,6 +43,7 @@ app.get('/health', (req, res) => {
     status: 'ok', 
     timestamp: new Date().toISOString(),
     version: '2.0.0',
+    database: isSupabaseConfigured() ? 'supabase' : 'in-memory',
     features: {
       hailData: true,
       leadManagement: true,
@@ -59,45 +55,33 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/hail', generalLimiter, hailRoutes);
-app.use('/api/leads', generalLimiter, leadsRoutes);
-app.use('/api/skiptrace', skipTraceLimiter, skiptraceRoutes);
-app.use('/api/campaigns', generalLimiter, campaignsRoutes);
-app.use('/api/ghl', generalLimiter, ghlRoutes);
-app.use('/api/stats', generalLimiter, statsRoutes);
+app.use('/api/hail', hailRoutes);
+app.use('/api/leads', leadsRoutes);
+app.use('/api/skiptrace', skiptraceRoutes);
+app.use('/api/campaigns', campaignsRoutes);
+app.use('/api/ghl', ghlRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Error handling
 app.use(errorHandler);
 
-// Test database connection
-pool.query('SELECT NOW()', (err) => {
-  if (err) {
-    logger.error('Database connection failed:', err);
-    logger.warn('Server starting without database connection');
-  } else {
-    logger.info('Database connected successfully');
-  }
-});
-
 app.listen(PORT, () => {
-  logger.info(`
+  const supabaseStatus = isSupabaseConfigured() ? '✓ Supabase Connected' : '⚠ Using In-Memory Data';
+  console.log(`
 ╔════════════════════════════════════════════════════════╗
 ║     WISCONSIN HAIL CRM - BACKEND SERVER                ║
 ╠════════════════════════════════════════════════════════╣
 ║  Status: ONLINE                                        ║
 ║  Port: ${PORT}                                          ║
-║  Environment: ${process.env.NODE_ENV || 'development'}  ║
-║  Time: ${new Date().toLocaleString()}                    ║
+║  Database: ${supabaseStatus.padEnd(30)}  ║
+║  Time: ${new Date().toLocaleString().padEnd(32)}  ║
 ╠════════════════════════════════════════════════════════╣
 ║  FEATURES:                                             ║
-║  ✓ Authentication & Authorization                      ║
-║  ✓ Hail Data API (NOAA)                                ║
+║  ✓ Hail Data API (NOAA via Supabase)                   ║
 ║  ✓ Lead Management CRM                                 ║
 ║  ✓ Skip Tracing (TLO/Batch)                            ║
 ║  ✓ Marketing Campaigns (Email/SMS)                     ║
 ║  ✓ GoHighLevel Integration                             ║
-║  ✓ Security & Rate Limiting                            ║
 ╚════════════════════════════════════════════════════════╝
   `);
 });
