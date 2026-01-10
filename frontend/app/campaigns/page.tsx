@@ -16,7 +16,7 @@ export default function CampaignsPage() {
   }, [])
 
   const getStatusBadge = (status: string) => {
-    const classes = {
+    const classes: Record<string, string> = {
       active: 'bg-secondary text-secondary-foreground',
       scheduled: 'bg-accent text-accent-foreground',
       draft: 'bg-muted text-muted-foreground'
@@ -25,7 +25,7 @@ export default function CampaignsPage() {
   }
 
   const getTypeIcon = (type: string) => {
-    const icons = { email: '✉', sms: '📱', direct_mail: '📬', ringless_voicemail: '🔔' }
+    const icons: Record<string, string> = { email: '✉', sms: '📱', direct_mail: '📬', ringless_voicemail: '🔔' }
     return icons[type] || '📢'
   }
 

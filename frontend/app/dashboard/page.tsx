@@ -20,7 +20,7 @@ export default function DashboardPage() {
   }, [])
 
   const getSeverityBadge = (severity: string) => {
-    const classes = {
+    const classes: Record<string, string> = {
       critical: 'badge-critical',
       high: 'badge-high',
       medium: 'badge-medium',
@@ -143,12 +143,12 @@ export default function DashboardPage() {
                         <div key={severity} className="flex items-center gap-3">
                           <span className={`badge ${getSeverityBadge(severity)}`}>{severity}</span>
                           <div className="flex-1 h-6 bg-muted border border-border">
-                            <div 
+                            <div
                               className="h-full bg-primary"
-                              style={{ width: `${(count / stats.hailActivity.totalReports) * 100}%` }}
+                              style={{ width: `${(Number(count) / stats.hailActivity.totalReports) * 100}%` }}
                             ></div>
                           </div>
-                          <span className="data-display text-sm w-8 text-right">{count}</span>
+                          <span className="data-display text-sm w-8 text-right">{String(count)}</span>
                         </div>
                       ))}
                     </div>
@@ -162,7 +162,7 @@ export default function DashboardPage() {
               <div className="card mt-8">
                 <h3 className="text-lg font-bold text-foreground mb-4 uppercase">Recent Activity</h3>
                 <div className="space-y-3">
-                  {stats.recentActivity.map((activity, idx) => (
+                  {stats.recentActivity.map((activity: any, idx: number) => (
                     <div key={idx} className="flex items-start gap-4 p-3 border-2 border-border">
                       <div className="w-2 h-2 bg-primary mt-2"></div>
                       <div className="flex-1">
