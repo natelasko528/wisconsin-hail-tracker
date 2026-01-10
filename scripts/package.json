@@ -1,0 +1,13 @@
+{
+  "name": "wisconsin-hail-tracker-scripts",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "load:noaa": "node load-noaa-data.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.4",
+    "csv-parse": "^5.5.0",
+    "node-fetch": "^3.3.2"
+  }
+}
