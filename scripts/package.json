@@ -1,0 +1,10 @@
+{
+  "name": "wisconsin-hail-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
+    "csv-parse": "^5.6.0",
+    "dotenv": "^16.6.1"
+  }
+}
