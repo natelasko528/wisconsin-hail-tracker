@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Sidebar from './Sidebar'
 
 interface AppLayoutProps {
@@ -7,13 +8,25 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false)
+
   return (
     <div className="h-screen w-screen overflow-hidden bg-background">
       {/* Sidebar - Fixed overlay on desktop, slide-in on mobile */}
-      <Sidebar />
+      <Sidebar 
+        isCollapsed={isCollapsed} 
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)} 
+      />
       
-      {/* Main Content - Full screen, sidebar overlays (doesn't push) */}
-      <main className="h-full w-full">
+      {/* Main Content - Pushed by sidebar on desktop */}
+      <main 
+        className={`
+          h-full w-full 
+          transition-all duration-300 ease-in-out
+          lg:pl-64
+          ${isCollapsed ? 'lg:pl-16' : 'lg:pl-64'}
+        `}
+      >
         {children}
       </main>
     </div>

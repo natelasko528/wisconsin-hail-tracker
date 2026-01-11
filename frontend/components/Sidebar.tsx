@@ -43,9 +43,13 @@ const utilityNavItems: NavItem[] = [
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  isCollapsed: boolean
+  onToggleCollapse: () => void
+}
+
+export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname()
-  const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
   const isActive = (href: string) => {
@@ -158,7 +162,7 @@ export default function Sidebar() {
           {/* Collapse Toggle - Desktop only */}
           <button
             className="hidden lg:flex btn btn-ghost btn-icon btn-sm ml-auto"
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={onToggleCollapse}
           >
             {isCollapsed ? (
               <ChevronRight className="w-4 h-4 text-foreground-muted" />

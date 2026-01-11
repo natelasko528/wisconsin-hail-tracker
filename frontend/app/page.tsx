@@ -263,7 +263,7 @@ export default function HailMapPage() {
     <AppLayout>
       <div className="h-full w-full flex flex-col relative overflow-hidden">
         {/* Compact Stats Bar - Floating above map */}
-        <div className="absolute top-4 left-20 lg:left-72 z-[60] pointer-events-none">
+        <div className="absolute top-4 left-20 z-[60] pointer-events-none">
           <div className="glass rounded-lg border border-border px-4 py-2 shadow-lg pointer-events-auto">
             <div className="hidden md:flex items-center gap-6">
               <div className="flex items-center gap-2">
