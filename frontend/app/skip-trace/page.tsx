@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
 import { 
   Search,
@@ -68,13 +67,23 @@ interface Lead {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 export default function SkipTraceCenterPage() {
-  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<'single' | 'batch' | 'results'>('single')
   const [isLoading, setIsLoading] = useState(false)
   const [isMockMode, setIsMockMode] = useState(true) // Assume mock until verified
-  
+
   // Single lookup state
-  const [singleAddress, setSingleAddress] = useState(searchParams.get('address') || '')
+  const [singleAddress, setSingleAddress] = useState('')
+
+  // Initialize address from URL params after mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const address = params.get('address')
+      if (address) {
+        setSingleAddress(address)
+      }
+    }
+  }, [])
   const [singleResult, setSingleResult] = useState<SkipTraceResult | null>(null)
   const [isMockResult, setIsMockResult] = useState(false)
   

@@ -1,28 +1,21 @@
 import type { Metadata } from 'next'
-import { Space_Grotesk, Inter_Tight, JetBrains_Mono } from 'next/font/google'
+// Temporarily disabled Google Fonts due to build restrictions
+// import { Space_Grotesk, Inter_Tight, JetBrains_Mono } from 'next/font/google'
 import { Providers } from '@/components/Providers'
 import './globals.css'
 
-const spaceGrotesk = Space_Grotesk({ 
-  weight: ['400', '500', '600', '700'],
-  subsets: ['latin'],
+// Using system fonts as fallback
+const spaceGrotesk = {
   variable: '--font-display',
-  display: 'swap',
-})
+}
 
-const interTight = Inter_Tight({ 
-  weight: ['400', '500', '600', '700'],
-  subsets: ['latin'],
+const interTight = {
   variable: '--font-sans',
-  display: 'swap',
-})
+}
 
-const jetbrainsMono = JetBrains_Mono({ 
-  weight: ['400', '500', '600', '700'],
-  subsets: ['latin'],
+const jetbrainsMono = {
   variable: '--font-mono',
-  display: 'swap',
-})
+}
 
 export const metadata: Metadata = {
   title: 'Hail CRM Elite | Storm Command Center',

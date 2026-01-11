@@ -163,7 +163,7 @@ export default function CanvassPage() {
         {activeTab === 'map' && (
           <StormMap
             events={[]}
-            properties={properties}
+            properties={properties.filter(p => p.latitude != null && p.longitude != null) as any}
             showProperties={true}
             center={userLocation ? [userLocation.lat, userLocation.lng] : undefined}
             zoom={15}
