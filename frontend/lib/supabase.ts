@@ -258,9 +258,9 @@ export const db = {
       .insert(activity)
       .select()
       .single();
-    
+
     if (error) throw error;
-    return data as Activity[];
+    return data as Activity;
   },
 };
 

@@ -1,17 +1,17 @@
-# Deployment Guide
+# 🚀 Wisconsin Hail Tracker - Deployment Guide
 
-## Prerequisites
+## Quick Deploy to Vercel (5 minutes)
 
+### Current Setup Status
+✅ **Database**: Supabase (Already Configured)
+✅ **Build**: Passing
+✅ **Branch**: `claude/parallel-analysis-fix-4ewI6`
+✅ **Local**: Running on http://localhost:3000
+
+### Prerequisites
 1. **Vercel Account** - Sign up at https://vercel.com
-2. **PostgreSQL Database** - Options:
-   - Neon (recommended): https://neon.tech
-   - Supabase: https://supabase.com
-   - Railway: https://railway.app
-   - Vercel Postgres: https://vercel.com/storage/postgres
-
-3. **Redis Instance** (optional, for job queue)
-   - Upstash: https://upstash.com
-   - Railway: https://railway.app
+2. **GitHub Account** - Repository already at `natelasko528/wisconsin-hail-tracker`
+3. **Supabase** - ✅ Already configured with credentials
 
 ## Step 1: Deploy Database
 

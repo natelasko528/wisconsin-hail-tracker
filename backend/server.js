@@ -14,6 +14,7 @@ import aiRoutes from './routes/ai.js';
 
 // Middleware
 import { errorHandler } from './middleware/errorHandler.js';
+import { securityHeaders, generalLimiter, skipTraceLimiter, campaignLimiter } from './middleware/security.js';
 
 // Supabase client
 import { isSupabaseConfigured } from './lib/supabase.js';
@@ -32,6 +33,9 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
+// Security headers
+app.use(securityHeaders);
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl)
@@ -47,6 +51,9 @@ app.use(cors({
 // Body parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// General rate limiting (applies to all routes except health check)
+app.use(generalLimiter);
 
 // Request logging
 app.use((req, res, next) => {
@@ -71,11 +78,11 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API Routes
+// API Routes with specific rate limiters
 app.use('/api/hail', hailRoutes);
 app.use('/api/leads', leadsRoutes);
-app.use('/api/skiptrace', skiptraceRoutes);
-app.use('/api/campaigns', campaignsRoutes);
+app.use('/api/skiptrace', skipTraceLimiter, skiptraceRoutes);
+app.use('/api/campaigns', campaignLimiter, campaignsRoutes);
 app.use('/api/ghl', ghlRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/properties', propertiesRoutes);
