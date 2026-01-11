@@ -9,13 +9,29 @@
     "dev:frontend": "cd frontend && next dev",
     "build": "cd frontend && next build",
     "skiptrace": "cd backend && node scripts/skiptrace.js",
-    "sync:ghl": "cd backend && node scripts/sync-ghl.js"
+    "sync:ghl": "cd backend && node scripts/sync-ghl.js",
+    "seed:noaa": "cd scripts && node load-noaa-data.js",
+    "seed:test-data": "node scripts/seed-test-data.js",
+    "test": "npm run test:e2e",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:visual": "playwright test --update-snapshots",
+    "test:a11y": "playwright test accessibility",
+    "test:performance": "playwright test --grep 'Performance'",
+    "test:report": "playwright show-report test-results/html-report"
   },
   "workspaces": [
     "backend",
     "frontend"
   ],
   "dependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
+    "@playwright/test": "^1.40.1",
+    "typescript": "^5.3.3"
   }
 }

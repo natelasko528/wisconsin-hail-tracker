@@ -9,22 +9,36 @@ export function Toaster() {
       toastOptions={{
         duration: 4000,
         style: {
-          background: 'var(--card-bg)',
-          color: 'var(--text)',
-          border: '2px solid var(--border)',
-          borderRadius: '0px',
-          padding: '16px',
+          background: 'var(--card)',
+          color: 'var(--foreground)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)',
+          padding: '12px 16px',
+          fontSize: '0.875rem',
+          boxShadow: 'var(--shadow-lg)',
         },
         success: {
           iconTheme: {
-            primary: 'var(--primary)',
-            secondary: 'var(--card-bg)',
+            primary: 'var(--success)',
+            secondary: 'var(--card)',
+          },
+          style: {
+            borderLeft: '3px solid var(--success)',
           },
         },
         error: {
           iconTheme: {
-            primary: 'var(--danger)',
-            secondary: 'var(--card-bg)',
+            primary: 'var(--destructive)',
+            secondary: 'var(--card)',
+          },
+          style: {
+            borderLeft: '3px solid var(--destructive)',
+          },
+        },
+        loading: {
+          iconTheme: {
+            primary: 'var(--primary)',
+            secondary: 'var(--card)',
           },
         },
       }}

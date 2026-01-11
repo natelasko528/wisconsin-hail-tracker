@@ -9,6 +9,8 @@ import skiptraceRoutes from './routes/skiptrace.js';
 import campaignsRoutes from './routes/campaigns.js';
 import ghlRoutes from './routes/ghl.js';
 import statsRoutes from './routes/stats.js';
+import propertiesRoutes from './routes/properties.js';
+import aiRoutes from './routes/ai.js';
 
 // Middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -21,9 +23,24 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS
+// CORS - allow multiple development ports
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002',
+  'http://localhost:3003',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
   credentials: true
 }));
 
@@ -61,6 +78,8 @@ app.use('/api/skiptrace', skiptraceRoutes);
 app.use('/api/campaigns', campaignsRoutes);
 app.use('/api/ghl', ghlRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/properties', propertiesRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -78,8 +97,10 @@ app.listen(PORT, () => {
 ╠════════════════════════════════════════════════════════╣
 ║  FEATURES:                                             ║
 ║  ✓ Hail Data API (NOAA via Supabase)                   ║
+║  ✓ Property Discovery (OpenStreetMap)                  ║
 ║  ✓ Lead Management CRM                                 ║
 ║  ✓ Skip Tracing (TLO/Batch)                            ║
+║  ✓ AI Intelligence (Damage Scoring, Scripts)           ║
 ║  ✓ Marketing Campaigns (Email/SMS)                     ║
 ║  ✓ GoHighLevel Integration                             ║
 ╚════════════════════════════════════════════════════════╝

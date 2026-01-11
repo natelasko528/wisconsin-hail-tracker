@@ -1,198 +1,376 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useState, useEffect, useCallback } from 'react'
+import AppLayout from '@/components/AppLayout'
+import { KanbanBoard } from '@/components/leads'
+import { 
+  Search,
+  Filter,
+  Plus,
+  Download,
+  Upload,
+  LayoutGrid,
+  List,
+  Users,
+  TrendingUp,
+  DollarSign,
+  Calendar,
+  RefreshCw,
+  SlidersHorizontal
+} from 'lucide-react'
 
-const PIPELINE_STAGES = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost']
+interface Lead {
+  id: string
+  name: string
+  property_address: string
+  status: string
+  hail_size?: number
+  phone?: string
+  email?: string
+  created_at: string
+  updated_at?: string
+  storm_date?: string
+  notes_count?: number
+  property_value?: number
+  lead_score?: number
+}
 
-export default function LeadsPage() {
-  const [leads, setLeads] = useState<any[]>([])
-  const [filter, setFilter] = useState({ stage: '', search: '' })
-  const [loading, setLoading] = useState(true)
-  const [selectedLead, setSelectedLead] = useState<any>(null)
+interface PipelineStage {
+  id: string
+  name: string
+  color: string
+}
 
-  useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/leads`)
-      .then(res => res.json())
-      .then(data => { setLeads(data.data); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
+const PIPELINE_STAGES: PipelineStage[] = [
+  { id: 'New', name: 'New', color: 'primary' },
+  { id: 'Contacted', name: 'Contacted', color: 'purple' },
+  { id: 'Appointment', name: 'Appointment Set', color: 'warning' },
+  { id: 'Inspection', name: 'Inspection Done', color: 'pink' },
+  { id: 'Proposal', name: 'Proposal Sent', color: 'blue' },
+  { id: 'Contract', name: 'Contract Signed', color: 'success' },
+  { id: 'Complete', name: 'Job Complete', color: 'emerald' },
+  { id: 'Lost', name: 'Lost', color: 'destructive' },
+]
 
-  const filteredLeads = leads.filter(lead => {
-    if (filter.stage && lead.stage !== filter.stage) return false
-    if (filter.search) {
-      const search = filter.search.toLowerCase()
-      if (!lead.name.toLowerCase().includes(search) && 
-          !lead.propertyAddress.toLowerCase().includes(search)) return false
-    }
-    return true
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+export default function LeadsPipelinePage() {
+  const [leads, setLeads] = useState<Lead[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+
+  // Filters
+  const [filters, setFilters] = useState({
+    status: '',
+    minHailSize: '',
+    hasPhone: false,
+    hasEmail: false,
+    dateRange: ''
   })
 
-  const getStageBadge = (stage: string) => `stage-${stage}`
+  // Fetch leads
+  const fetchLeads = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (searchTerm) params.append('search', searchTerm)
+      if (filters.status) params.append('status', filters.status)
+      
+      const response = await fetch(`${API_URL}/api/leads?${params}`)
+      const data = await response.json()
+      
+      if (data.success || Array.isArray(data.data)) {
+        setLeads(data.data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching leads:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [searchTerm, filters])
+
+  useEffect(() => {
+    fetchLeads()
+  }, [fetchLeads])
+
+  // Handle lead status change (drag-drop)
+  const handleLeadMove = async (leadId: string, newStatus: string) => {
+    // Optimistic update
+    setLeads(prev => prev.map(lead => 
+      lead.id === leadId ? { ...lead, status: newStatus } : lead
+    ))
+
+    try {
+      const response = await fetch(`${API_URL}/api/leads/${leadId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      })
+      
+      if (!response.ok) {
+        // Revert on error
+        fetchLeads()
+      }
+    } catch (error) {
+      console.error('Error updating lead:', error)
+      fetchLeads()
+    }
+  }
+
+  // Calculate stats
+  const stats = {
+    total: leads.length,
+    new: leads.filter(l => l.status === 'New').length,
+    inProgress: leads.filter(l => !['New', 'Lost', 'Complete'].includes(l.status)).length,
+    won: leads.filter(l => l.status === 'Complete' || l.status === 'Contract').length,
+    totalValue: leads.reduce((sum, l) => sum + (l.property_value || 0), 0),
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b-4 border-border bg-card sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <Link href="/dashboard" className="text-xl font-bold text-primary uppercase">← Dashboard</Link>
-              <h1 className="text-2xl font-bold text-foreground uppercase">Lead Pipeline</h1>
-            </div>
-            <button className="btn btn-primary">+ Add Lead</button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Filters */}
-        <div className="card mb-8">
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex-1 min-w-[200px]">
-              <input
-                type="text"
-                placeholder="Search leads..."
-                className="input w-full"
-                value={filter.search}
-                onChange={(e) => setFilter({ ...filter, search: e.target.value })}
-              />
-            </div>
-            <div>
-              <select 
-                className="input"
-                value={filter.stage}
-                onChange={(e) => setFilter({ ...filter, stage: e.target.value })}
-              >
-                <option value="">All Stages</option>
-                {PIPELINE_STAGES.map(stage => (
-                  <option key={stage} value={stage}>{stage.replace('_', ' ').toUpperCase()}</option>
-                ))}
-              </select>
-            </div>
-            <button className="btn btn-secondary">Export CSV</button>
-            <button className="btn btn-accent">Skip Trace Batch</button>
-          </div>
-        </div>
-
-        {/* Pipeline Stages Summary */}
-        <div className="grid grid-cols-4 md:grid-cols-7 gap-3 mb-8">
-          {PIPELINE_STAGES.map(stage => (
-            <div key={stage} className="card text-center cursor-pointer hover:shadow-lg transition-shadow">
-              <div className="text-2xl font-bold text-primary">{leads.filter(l => l.stage === stage).length}</div>
-              <div className="text-xs uppercase tracking-wider text-muted-foreground mt-1">{stage.replace('_', ' ')}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Leads Table */}
-        <div className="card overflow-x-auto">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Address</th>
-                <th>Stage</th>
-                <th>Score</th>
-                <th>Hail Size</th>
-                <th>Value</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLeads.map(lead => (
-                <tr key={lead.id} className="cursor-pointer" onClick={() => setSelectedLead(lead)}>
-                  <td>
-                    <div className="font-bold text-foreground">{lead.name}</div>
-                    {lead.email && <div className="font-mono text-xs text-muted-foreground">{lead.email}</div>}
-                  </td>
-                  <td className="font-mono text-sm">{lead.propertyAddress}</td>
-                  <td>
-                    <span className={`badge ${getStageBadge(lead.stage)}`}>{lead.stage.replace('_', ' ')}</span>
-                  </td>
-                  <td className="data-display font-bold text-primary">{lead.score}</td>
-                  <td className="data-display">{lead.hailSize}"</td>
-                  <td className="data-display">${(lead.propertyValue / 1000).toFixed(0)}k</td>
-                  <td>
-                    <button className="btn btn-secondary text-xs py-2 px-3">View</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </main>
-
-      {/* Lead Detail Modal */}
-      {selectedLead && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedLead(null)}>
-          <div className="card max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-bold text-foreground uppercase">{selectedLead.name}</h2>
-              <button onClick={() => setSelectedLead(null)} className="text-2xl text-muted-foreground">×</button>
+    <AppLayout>
+      <div className="h-screen flex flex-col">
+        {/* Header */}
+        <header className="flex-shrink-0 border-b border-border bg-background-secondary/50 backdrop-blur">
+          <div className="flex items-center justify-between h-14 px-4">
+            <div className="flex items-center gap-4">
+              <h1 className="font-display text-lg font-bold text-foreground">
+                Leads Pipeline
+              </h1>
+              <div className="hidden md:flex items-center gap-3 ml-4 pl-4 border-l border-border">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-mono font-semibold">{stats.total}</span>
+                  <span className="text-xs text-foreground-muted">Total</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-success" />
+                  <span className="text-sm font-mono font-semibold">{stats.won}</span>
+                  <span className="text-xs text-foreground-muted">Won</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-warning" />
+                  <span className="text-sm font-mono font-semibold">
+                    ${(stats.totalValue / 1000).toFixed(0)}k
+                  </span>
+                  <span className="text-xs text-foreground-muted">Pipeline</span>
+                </div>
+              </div>
             </div>
             
-            <div className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Property Address</div>
-                  <div className="font-mono text-sm">{selectedLead.propertyAddress}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Email</div>
-                  <div className="font-mono text-sm">{selectedLead.email || 'N/A'}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Phone</div>
-                  <div className="font-mono text-sm">{selectedLead.phone || 'N/A'}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Stage</div>
-                  <span className={`badge ${getStageBadge(selectedLead.stage)}`}>{selectedLead.stage.replace('_', ' ')}</span>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Lead Score</div>
-                  <div className="data-display text-2xl font-bold text-primary">{selectedLead.score}</div>
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Property Value</div>
-                  <div className="data-display">${selectedLead.propertyValue.toLocaleString()}</div>
-                </div>
+            <div className="flex items-center gap-2">
+              {/* Search */}
+              <div className="relative hidden sm:block">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground-subtle" />
+                <input
+                  type="text"
+                  placeholder="Search leads..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="input pl-9 w-64 h-9"
+                />
               </div>
 
-              <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Tags</div>
-                <div className="flex flex-wrap gap-2">
-                  {selectedLead.tags.map((tag: string) => (
-                    <span key={tag} className="badge bg-muted text-muted-foreground">{tag}</span>
-                  ))}
-                </div>
+              {/* View Mode Toggle */}
+              <div className="flex items-center bg-background-secondary rounded-lg p-1 border border-border">
+                <button
+                  onClick={() => setViewMode('kanban')}
+                  className={`btn btn-sm btn-icon ${viewMode === 'kanban' ? 'bg-primary text-primary-foreground' : 'btn-ghost'}`}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`btn btn-sm btn-icon ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'btn-ghost'}`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
               </div>
 
-              <div>
-                <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Notes</div>
-                {selectedLead.notes.length > 0 ? (
-                  <div className="space-y-2">
-                    {selectedLead.notes.map((note: any) => (
-                      <div key={note.id} className="p-3 border-2 border-border bg-muted">
-                        <div className="text-sm">{note.text}</div>
-                        <div className="text-xs text-muted-foreground mt-1 font-mono">{note.author} • {new Date(note.date).toLocaleDateString()}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">No notes yet</div>
-                )}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`btn btn-ghost btn-sm ${showFilters ? 'bg-muted' : ''}`}
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                <span className="hidden sm:inline">Filters</span>
+              </button>
+
+              <button
+                onClick={fetchLeads}
+                className="btn btn-ghost btn-sm"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+
+              <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-border">
+                <button className="btn btn-outline btn-sm">
+                  <Upload className="w-4 h-4" />
+                  Import
+                </button>
+                <button className="btn btn-outline btn-sm">
+                  <Download className="w-4 h-4" />
+                  Export
+                </button>
               </div>
 
-              <div className="flex gap-4 pt-4 border-t-2 border-border">
-                <button className="btn btn-primary flex-1">Edit Lead</button>
-                <button className="btn btn-secondary flex-1">Skip Trace</button>
-                <button className="btn btn-accent flex-1">Add Note</button>
-              </div>
+              <button className="btn btn-primary btn-sm">
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Add Lead</span>
+              </button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+
+          {/* Filters Bar */}
+          {showFilters && (
+            <div className="px-4 py-3 border-t border-border animate-fade-in-down">
+              <div className="flex flex-wrap items-center gap-3">
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters(f => ({ ...f, status: e.target.value }))}
+                  className="input select h-8 text-xs w-40"
+                >
+                  <option value="">All Stages</option>
+                  {PIPELINE_STAGES.map(stage => (
+                    <option key={stage.id} value={stage.id}>{stage.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={filters.dateRange}
+                  onChange={(e) => setFilters(f => ({ ...f, dateRange: e.target.value }))}
+                  className="input select h-8 text-xs w-40"
+                >
+                  <option value="">Any Time</option>
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="quarter">This Quarter</option>
+                </select>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filters.hasPhone}
+                    onChange={(e) => setFilters(f => ({ ...f, hasPhone: e.target.checked }))}
+                    className="w-4 h-4 rounded border-foreground-subtle"
+                  />
+                  <span className="text-xs text-foreground-muted">Has Phone</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={filters.hasEmail}
+                    onChange={(e) => setFilters(f => ({ ...f, hasEmail: e.target.checked }))}
+                    className="w-4 h-4 rounded border-foreground-subtle"
+                  />
+                  <span className="text-xs text-foreground-muted">Has Email</span>
+                </label>
+
+                <button
+                  onClick={() => setFilters({
+                    status: '',
+                    minHailSize: '',
+                    hasPhone: false,
+                    hasEmail: false,
+                    dateRange: ''
+                  })}
+                  className="btn btn-ghost btn-sm text-xs"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          )}
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-hidden bg-background">
+          {viewMode === 'kanban' ? (
+            <KanbanBoard
+              leads={leads}
+              stages={PIPELINE_STAGES}
+              onLeadMove={handleLeadMove}
+              onLeadSelect={setSelectedLead}
+              isLoading={isLoading}
+            />
+          ) : (
+            <div className="p-4 overflow-auto h-full">
+              {/* Table View */}
+              <div className="card overflow-hidden">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Address</th>
+                      <th>Status</th>
+                      <th>Hail Size</th>
+                      <th>Phone</th>
+                      <th>Created</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      [...Array(5)].map((_, i) => (
+                        <tr key={i}>
+                          {[...Array(7)].map((_, j) => (
+                            <td key={j}>
+                              <div className="h-4 bg-muted rounded animate-pulse w-24" />
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    ) : leads.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="text-center py-12">
+                          <div className="empty-state inline-flex flex-col">
+                            <Users className="empty-state-icon mx-auto" />
+                            <div className="empty-state-title">No leads yet</div>
+                            <div className="empty-state-description">
+                              Convert storm events to leads from the Storm Command page.
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      leads.map(lead => (
+                        <tr 
+                          key={lead.id}
+                          className="cursor-pointer"
+                          onClick={() => setSelectedLead(lead)}
+                        >
+                          <td className="font-medium">{lead.name || 'Property Owner'}</td>
+                          <td className="text-foreground-muted">{lead.property_address}</td>
+                          <td>
+                            <span className={`badge badge-stage-${lead.status.toLowerCase().replace(/\s+/g, '-')}`}>
+                              {lead.status}
+                            </span>
+                          </td>
+                          <td>
+                            {lead.hail_size && (
+                              <span className="font-mono">{lead.hail_size}"</span>
+                            )}
+                          </td>
+                          <td className="text-foreground-muted">{lead.phone || '-'}</td>
+                          <td className="text-foreground-muted text-sm">
+                            {new Date(lead.created_at).toLocaleDateString()}
+                          </td>
+                          <td>
+                            <button className="btn btn-ghost btn-sm">View</button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    </AppLayout>
   )
 }

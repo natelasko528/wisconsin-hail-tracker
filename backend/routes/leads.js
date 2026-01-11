@@ -33,24 +33,74 @@ let LEADS_DB = [
 ];
 
 // Transform Supabase lead to API format (joins with properties table)
-function transformLead(lead, property = null, notes = []) {
+function transformLead(lead, property = null, notes = [], skipTraceData = null) {
+  // Get contact info from multiple sources
+  const phone = lead.owner_phone || skipTraceData?.phones?.[0]?.number || property?.owner_phone || null;
+  const email = lead.owner_email || skipTraceData?.emails?.[0]?.address || property?.owner_email || null;
+  
   return {
     id: lead.id,
     property_id: lead.property_id,
     storm_id: lead.storm_id,
-    name: property?.owner_name || 'Unknown',
-    property_address: property?.full_address || 'Unknown Address',
-    email: null, // Add email field to properties if needed
-    phone: null, // Add phone field to properties if needed
+    storm_impact_id: lead.storm_impact_id,
+    
+    // Contact Info
+    name: lead.owner_name || property?.owner_name || 'Property Owner',
+    phone,
+    email,
+    
+    // Address - structured
+    property_address: property?.full_address || property?.address_line || lead.property_address || 'Unknown Address',
+    street_address: property?.street_address,
+    city: property?.city || lead.city,
+    state: property?.state || lead.state || 'WI',
+    zip_code: property?.zip_code || lead.zip_code,
+    county: property?.county || lead.county,
+    latitude: property?.latitude,
+    longitude: property?.longitude,
+    
+    // Property Details
+    property_type: property?.property_type,
+    year_built: property?.year_built,
+    square_footage: property?.square_footage,
+    roof_type: property?.roof_type,
+    roof_age_years: property?.roof_age_years,
+    property_value: property?.market_value || property?.assessed_value || 0,
+    
+    // Storm & Damage Info
+    hail_size: parseFloat(lead.hail_size) || 0,
+    storm_date: lead.storm_date,
+    damage_probability: lead.damage_probability,
+    priority_score: lead.priority_score || calculateScore(lead),
+    
+    // Status
     stage: lead.status,
     status: lead.status,
-    score: calculateScore(lead),
-    hail_size: parseFloat(lead.hail_size) || 0,
-    property_value: 0, // Add property_value to properties if needed
+    score: lead.priority_score || calculateScore(lead),
+    
+    // AI & Insights
+    ai_insights: lead.ai_insights,
+    tags: lead.tags || [],
+    
+    // Assignment
     assigned_to: lead.assigned_to_id,
+    
+    // Notes
     notes: notes,
+    
+    // Timestamps
     created_at: lead.created_at,
-    updated_at: lead.updated_at
+    updated_at: lead.updated_at,
+    last_contacted_at: lead.last_contacted_at,
+    
+    // Skip trace info (if available)
+    skip_trace: skipTraceData ? {
+      has_data: true,
+      confidence_score: skipTraceData.confidence_score,
+      phones: skipTraceData.phones,
+      emails: skipTraceData.emails,
+      searched_at: skipTraceData.searched_at
+    } : null
   };
 }
 
@@ -203,7 +253,36 @@ router.get('/:id', async (req, res) => {
         .from('leads')
         .select(`
           *,
-          properties (id, full_address, owner_name, latitude, longitude)
+          properties (
+            id, 
+            street_address, 
+            city, 
+            state, 
+            zip_code, 
+            county,
+            full_address, 
+            address_line,
+            owner_name,
+            owner_phone,
+            owner_email,
+            latitude, 
+            longitude,
+            property_type,
+            year_built,
+            square_footage,
+            roof_type,
+            roof_age_years,
+            assessed_value,
+            market_value
+          ),
+          storm_property_impacts (
+            id,
+            distance_miles,
+            hail_size_at_location,
+            damage_probability,
+            priority_score,
+            priority_factors
+          )
         `)
         .eq('id', req.params.id)
         .single();
@@ -222,7 +301,46 @@ router.get('/:id', async (req, res) => {
         .eq('lead_id', req.params.id)
         .order('created_at', { ascending: false });
       
-      res.json({ success: true, data: transformLead(lead, lead.properties, notes || []) });
+      // Get skip trace data
+      const { data: skipTraceData } = await supabase
+        .from('skip_trace_results')
+        .select('*')
+        .eq('lead_id', req.params.id)
+        .order('searched_at', { ascending: false })
+        .limit(1)
+        .single();
+      
+      // Get communication history
+      const { data: communications } = await supabase
+        .from('communication_log')
+        .select('*')
+        .eq('lead_id', req.params.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      // Get activity log
+      const { data: activities } = await supabase
+        .from('activity_log')
+        .select('*')
+        .eq('entity_type', 'lead')
+        .eq('entity_id', req.params.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      const transformedLead = transformLead(lead, lead.properties, notes || [], skipTraceData);
+      
+      // Add storm impact data if available
+      if (lead.storm_property_impacts?.[0]) {
+        transformedLead.storm_impact = lead.storm_property_impacts[0];
+      }
+      
+      // Add communication history
+      transformedLead.communications = communications || [];
+      
+      // Add activity log
+      transformedLead.activities = activities || [];
+      
+      res.json({ success: true, data: transformedLead });
     } else {
       const lead = LEADS_DB.find(l => l.id === req.params.id);
       if (!lead) return res.status(404).json({ error: 'Lead not found' });
@@ -464,6 +582,319 @@ router.get('/:id/notes', async (req, res) => {
     }
   } catch (error) {
     console.error('Error fetching notes:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// COMMUNICATION ENDPOINTS
+// ============================================================================
+
+// POST /api/leads/:id/call - Log a phone call
+router.post('/:id/call', async (req, res) => {
+  try {
+    const { 
+      phone_number, 
+      direction = 'outbound',
+      duration_seconds,
+      outcome,
+      notes 
+    } = req.body;
+
+    if (!isSupabaseConfigured()) {
+      return res.json({
+        success: true,
+        message: 'Call logged (demo mode)',
+        data: { id: Date.now().toString(), type: 'call', status: 'completed' }
+      });
+    }
+
+    // Log the communication
+    const { data: commLog, error: commError } = await supabase
+      .from('communication_log')
+      .insert({
+        lead_id: req.params.id,
+        type: 'call',
+        direction,
+        status: 'completed',
+        phone_number,
+        call_duration_seconds: duration_seconds,
+        call_outcome: outcome,
+        body: notes,
+        completed_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (commError) throw commError;
+
+    // Update lead's last_contacted_at
+    await supabase
+      .from('leads')
+      .update({ last_contacted_at: new Date().toISOString() })
+      .eq('id', req.params.id);
+
+    // Log activity
+    await supabase.from('activity_log').insert({
+      entity_type: 'lead',
+      entity_id: req.params.id,
+      action: 'call_logged',
+      description: `${direction === 'outbound' ? 'Outbound' : 'Inbound'} call - ${outcome || 'completed'}`,
+      metadata: { communication_id: commLog.id, outcome, duration_seconds }
+    });
+
+    res.json({
+      success: true,
+      message: 'Call logged successfully',
+      data: commLog
+    });
+
+  } catch (error) {
+    console.error('Error logging call:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/leads/:id/email - Send/log an email
+router.post('/:id/email', async (req, res) => {
+  try {
+    const { 
+      email_address,
+      subject,
+      body,
+      template_id,
+      ai_generated = false,
+      send_now = false
+    } = req.body;
+
+    if (!email_address && !send_now) {
+      // Just logging, not sending
+    } else if (!email_address) {
+      return res.status(400).json({ error: 'email_address is required to send' });
+    }
+
+    if (!isSupabaseConfigured()) {
+      return res.json({
+        success: true,
+        message: 'Email logged (demo mode)',
+        data: { id: Date.now().toString(), type: 'email', status: 'sent' }
+      });
+    }
+
+    // TODO: Integrate with SendGrid/email provider when configured
+    const emailStatus = send_now ? 'sent' : 'draft';
+
+    // Log the communication
+    const { data: commLog, error: commError } = await supabase
+      .from('communication_log')
+      .insert({
+        lead_id: req.params.id,
+        type: 'email',
+        direction: 'outbound',
+        status: emailStatus,
+        email_address,
+        subject,
+        body,
+        template_id,
+        ai_generated,
+        completed_at: send_now ? new Date().toISOString() : null
+      })
+      .select()
+      .single();
+
+    if (commError) throw commError;
+
+    if (send_now) {
+      // Update lead's last_contacted_at
+      await supabase
+        .from('leads')
+        .update({ last_contacted_at: new Date().toISOString() })
+        .eq('id', req.params.id);
+    }
+
+    // Log activity
+    await supabase.from('activity_log').insert({
+      entity_type: 'lead',
+      entity_id: req.params.id,
+      action: send_now ? 'email_sent' : 'email_drafted',
+      description: `Email ${send_now ? 'sent' : 'drafted'}: ${subject}`,
+      metadata: { communication_id: commLog.id, ai_generated }
+    });
+
+    res.json({
+      success: true,
+      message: send_now ? 'Email sent successfully' : 'Email draft saved',
+      data: commLog
+    });
+
+  } catch (error) {
+    console.error('Error with email:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/leads/:id/sms - Send/log an SMS
+router.post('/:id/sms', async (req, res) => {
+  try {
+    const { 
+      phone_number,
+      body,
+      template_id,
+      ai_generated = false,
+      send_now = false
+    } = req.body;
+
+    if (!body) {
+      return res.status(400).json({ error: 'body is required' });
+    }
+
+    if (send_now && !phone_number) {
+      return res.status(400).json({ error: 'phone_number is required to send' });
+    }
+
+    if (!isSupabaseConfigured()) {
+      return res.json({
+        success: true,
+        message: 'SMS logged (demo mode)',
+        data: { id: Date.now().toString(), type: 'sms', status: 'sent' }
+      });
+    }
+
+    // TODO: Integrate with Twilio when configured
+    const smsStatus = send_now ? 'sent' : 'draft';
+
+    // Log the communication
+    const { data: commLog, error: commError } = await supabase
+      .from('communication_log')
+      .insert({
+        lead_id: req.params.id,
+        type: 'sms',
+        direction: 'outbound',
+        status: smsStatus,
+        phone_number,
+        body,
+        template_id,
+        ai_generated,
+        sms_delivered: send_now,
+        completed_at: send_now ? new Date().toISOString() : null
+      })
+      .select()
+      .single();
+
+    if (commError) throw commError;
+
+    if (send_now) {
+      // Update lead's last_contacted_at
+      await supabase
+        .from('leads')
+        .update({ last_contacted_at: new Date().toISOString() })
+        .eq('id', req.params.id);
+    }
+
+    // Log activity
+    await supabase.from('activity_log').insert({
+      entity_type: 'lead',
+      entity_id: req.params.id,
+      action: send_now ? 'sms_sent' : 'sms_drafted',
+      description: `SMS ${send_now ? 'sent' : 'drafted'}: ${body.substring(0, 50)}...`,
+      metadata: { communication_id: commLog.id, ai_generated }
+    });
+
+    res.json({
+      success: true,
+      message: send_now ? 'SMS sent successfully' : 'SMS draft saved',
+      data: commLog
+    });
+
+  } catch (error) {
+    console.error('Error with SMS:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/leads/:id/communications - Get communication history
+router.get('/:id/communications', async (req, res) => {
+  try {
+    if (!isSupabaseConfigured()) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const { type, limit = 50 } = req.query;
+
+    let query = supabase
+      .from('communication_log')
+      .select('*')
+      .eq('lead_id', req.params.id)
+      .order('created_at', { ascending: false })
+      .limit(parseInt(limit));
+
+    if (type) {
+      query = query.eq('type', type);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    res.json({ success: true, data: data || [] });
+
+  } catch (error) {
+    console.error('Error fetching communications:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/leads/:id/schedule-callback - Schedule a callback
+router.post('/:id/schedule-callback', async (req, res) => {
+  try {
+    const { scheduled_for, notes, phone_number } = req.body;
+
+    if (!scheduled_for) {
+      return res.status(400).json({ error: 'scheduled_for is required' });
+    }
+
+    if (!isSupabaseConfigured()) {
+      return res.json({
+        success: true,
+        message: 'Callback scheduled (demo mode)',
+        data: { id: Date.now().toString(), scheduled_for }
+      });
+    }
+
+    // Log the scheduled communication
+    const { data: commLog, error: commError } = await supabase
+      .from('communication_log')
+      .insert({
+        lead_id: req.params.id,
+        type: 'call',
+        direction: 'outbound',
+        status: 'scheduled',
+        phone_number,
+        body: notes,
+        scheduled_for
+      })
+      .select()
+      .single();
+
+    if (commError) throw commError;
+
+    // Log activity
+    await supabase.from('activity_log').insert({
+      entity_type: 'lead',
+      entity_id: req.params.id,
+      action: 'callback_scheduled',
+      description: `Callback scheduled for ${new Date(scheduled_for).toLocaleString()}`,
+      metadata: { communication_id: commLog.id }
+    });
+
+    res.json({
+      success: true,
+      message: 'Callback scheduled',
+      data: commLog
+    });
+
+  } catch (error) {
+    console.error('Error scheduling callback:', error);
     res.status(500).json({ error: error.message });
   }
 });

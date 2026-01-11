@@ -7,60 +7,67 @@ const router = express.Router();
 router.get('/dashboard', async (req, res) => {
   try {
     if (isSupabaseConfigured()) {
-      // Fetch all data in parallel
+      // Fetch all data in parallel - use correct table names
       const [
-        { data: leads, error: leadsError },
-        { data: hailEvents, error: hailError },
-        { data: campaigns, error: campaignsError },
-        { data: skipTraces, error: skipError },
-        { data: activities, error: activityError }
+        leadsResult,
+        stormEventsResult,
+        campaignsResult,
+        skipTracesResult,
+        activitiesResult
       ] = await Promise.all([
-        supabase.from('leads').select('stage, score, property_value'),
-        supabase.from('hail_events').select('hail_size, severity, county'),
+        supabase.from('leads').select('status, hail_size'),
+        supabase.from('storm_events').select('magnitude, county'),
         supabase.from('campaigns').select('status, stats, leads_count'),
         supabase.from('skip_trace_results').select('status, confidence_score'),
         supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(10)
       ]);
       
-      if (leadsError || hailError || campaignsError || skipError) {
-        throw new Error('Error fetching dashboard data');
-      }
+      const leads = leadsResult.data || [];
+      const stormEvents = stormEventsResult.data || [];
+      const campaigns = campaignsResult.data || [];
+      const skipTraces = skipTracesResult.data || [];
+      const activities = activitiesResult.data || [];
       
       // Calculate lead stats
-      const totalLeads = leads?.length || 0;
-      const pipelineValue = leads?.reduce((sum, l) => sum + (parseFloat(l.property_value) || 0), 0) || 0;
-      const avgScore = totalLeads > 0 
-        ? Math.round(leads.reduce((sum, l) => sum + l.score, 0) / totalLeads)
-        : 0;
-      const closedWon = leads?.filter(l => l.stage === 'closed_won').length || 0;
+      const totalLeads = leads.length;
+      const closedWon = leads.filter(l => l.status === 'Contract Signed').length;
       const conversionRate = totalLeads > 0 ? Math.round((closedWon / totalLeads) * 100) : 0;
       
-      // Calculate hail stats
-      const totalHailReports = hailEvents?.length || 0;
-      const criticalEvents = hailEvents?.filter(h => h.severity === 'critical').length || 0;
+      // Calculate hail/storm stats
+      const totalHailReports = stormEvents.length;
+      const criticalEvents = stormEvents.filter(h => parseFloat(h.magnitude) >= 2.0).length;
       const avgHailSize = totalHailReports > 0
-        ? parseFloat((hailEvents.reduce((sum, h) => sum + parseFloat(h.hail_size), 0) / totalHailReports).toFixed(2))
+        ? parseFloat((stormEvents.reduce((sum, h) => sum + (parseFloat(h.magnitude) || 0), 0) / totalHailReports).toFixed(2))
         : 0;
-      const affectedCounties = new Set(hailEvents?.map(h => h.county) || []).size;
+      const affectedCounties = new Set(stormEvents.map(h => h.county).filter(Boolean)).size;
+      
+      // Severity breakdown based on hail size
+      const severityBreakdown = {
+        critical: stormEvents.filter(h => parseFloat(h.magnitude) >= 2.5).length,
+        high: stormEvents.filter(h => parseFloat(h.magnitude) >= 1.75 && parseFloat(h.magnitude) < 2.5).length,
+        medium: stormEvents.filter(h => parseFloat(h.magnitude) >= 1.0 && parseFloat(h.magnitude) < 1.75).length,
+        low: stormEvents.filter(h => parseFloat(h.magnitude) < 1.0).length
+      };
       
       // Calculate skip trace stats
-      const totalProcessed = skipTraces?.filter(s => s.status === 'completed').length || 0;
-      const pendingSkipTraces = skipTraces?.filter(s => s.status === 'pending' || s.status === 'processing').length || 0;
-      const avgConfidence = totalProcessed > 0
-        ? Math.round(skipTraces.filter(s => s.confidence_score).reduce((sum, s) => sum + s.confidence_score, 0) / totalProcessed)
+      const totalProcessed = skipTraces.filter(s => s.status === 'completed').length;
+      const pendingSkipTraces = skipTraces.filter(s => s.status === 'pending' || s.status === 'processing').length;
+      const completedWithScore = skipTraces.filter(s => s.confidence_score != null);
+      const avgConfidence = completedWithScore.length > 0
+        ? Math.round(completedWithScore.reduce((sum, s) => sum + s.confidence_score, 0) / completedWithScore.length)
         : 0;
       
       // Calculate campaign stats
-      const activeCampaigns = campaigns?.filter(c => c.status === 'active').length || 0;
-      const scheduledCampaigns = campaigns?.filter(c => c.status === 'scheduled').length || 0;
-      const totalSent = campaigns?.reduce((sum, c) => sum + (c.stats?.sent || 0), 0) || 0;
-      const totalOpened = campaigns?.reduce((sum, c) => sum + (c.stats?.opened || 0), 0) || 0;
+      const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
+      const scheduledCampaigns = campaigns.filter(c => c.status === 'scheduled').length;
+      const totalSent = campaigns.reduce((sum, c) => sum + (c.stats?.sent || 0), 0);
+      const totalOpened = campaigns.reduce((sum, c) => sum + (c.stats?.opened || 0), 0);
       const avgOpenRate = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
       
       // Format recent activity
-      const recentActivity = (activities || []).map(a => ({
+      const recentActivity = activities.map(a => ({
         type: a.action,
-        message: a.description,
+        message: a.description || `${a.action} on ${a.entity_type}`,
         time: formatTimeAgo(new Date(a.created_at)),
         metadata: a.metadata
       }));
@@ -72,14 +79,14 @@ router.get('/dashboard', async (req, res) => {
             totalLeads,
             activeCampaigns,
             conversionRate,
-            pipelineValue,
-            averageScore: avgScore
+            pipelineValue: 0 // No property_value in leads table
           },
           hailActivity: {
             totalReports: totalHailReports,
             criticalEvents,
             affectedCounties,
-            avgHailSize
+            avgHailSize,
+            severityBreakdown
           },
           skiptracing: {
             totalProcessed,
@@ -110,7 +117,13 @@ router.get('/dashboard', async (req, res) => {
             totalReports: 10,
             criticalEvents: 1,
             affectedCounties: 8,
-            avgHailSize: 2.03
+            avgHailSize: 2.03,
+            severityBreakdown: {
+              critical: 1,
+              high: 3,
+              medium: 4,
+              low: 2
+            }
           },
           skiptracing: {
             totalProcessed: 89,
@@ -143,13 +156,13 @@ router.get('/leads', async (req, res) => {
     if (isSupabaseConfigured()) {
       const { data: leads, error } = await supabase
         .from('leads')
-        .select('stage, score, property_value, created_at, assigned_to');
+        .select('status, hail_size, created_at, assigned_to_id');
       
       if (error) throw error;
       
-      const stages = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost'];
+      const stages = ['New', 'Contacted', 'Inspection Scheduled', 'Contract Signed', 'Lost'];
       const stageBreakdown = stages.reduce((acc, stage) => {
-        acc[stage] = leads.filter(l => l.stage === stage).length;
+        acc[stage] = leads.filter(l => l.status === stage).length;
         return acc;
       }, {});
       
@@ -158,10 +171,7 @@ router.get('/leads', async (req, res) => {
         data: {
           total: leads.length,
           stageBreakdown,
-          pipelineValue: leads.reduce((sum, l) => sum + (parseFloat(l.property_value) || 0), 0),
-          avgScore: leads.length > 0 
-            ? Math.round(leads.reduce((sum, l) => sum + l.score, 0) / leads.length)
-            : 0
+          pipelineValue: 0
         }
       });
     } else {
@@ -170,16 +180,13 @@ router.get('/leads', async (req, res) => {
         data: {
           total: 156,
           stageBreakdown: {
-            new: 45,
-            contacted: 38,
-            qualified: 32,
-            proposal: 18,
-            negotiation: 12,
-            closed_won: 8,
-            closed_lost: 3
+            New: 45,
+            Contacted: 38,
+            'Inspection Scheduled': 32,
+            'Contract Signed': 18,
+            Lost: 3
           },
-          pipelineValue: 4250000,
-          avgScore: 74
+          pipelineValue: 4250000
         }
       });
     }
@@ -206,7 +213,7 @@ router.get('/activity', async (req, res) => {
       res.json({
         success: true,
         count: count || data.length,
-        data: data.map(a => ({
+        data: (data || []).map(a => ({
           id: a.id,
           type: a.action,
           entityType: a.entity_type,
