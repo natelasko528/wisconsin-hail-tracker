@@ -1,227 +1,177 @@
-# Wisconsin Hail Tracker CRM
+# Supabase CLI
 
-A full-stack application for tracking hail storms and generating leads for roofing contractors in Wisconsin. Built with **Next.js 14**, **Express.js**, and **Supabase**.
+[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
+](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
 
-## 🌩️ Features
+[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
 
-### Data Layer
-- **NOAA Storm Events Database** integration (2023-2026)
-- Property parcel data integration
-- Homeowner contact records
-- Skip tracing API connections
-- Geographic hail event mapping
+This repository contains all the functionality for Supabase CLI.
 
-### Lead Management
-- Lead capture from hail maps
-- Lead scoring algorithm (severity + property value)
-- Pipeline stages: New → Contacted → Inspection Scheduled → Contract Signed
-- Activity timeline per lead
-- Notes and tagging system
+- [x] Running Supabase locally
+- [x] Managing database migrations
+- [x] Creating and deploying Supabase Functions
+- [x] Generating types directly from your database schema
+- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
 
-### Marketing Automation
-- Email campaign management
-- SMS campaign support
-- Campaign performance tracking
-- Scheduled campaign launches
+## Getting started
 
-### GoHighLevel Integration
-- Two-way contact sync
-- Workflow triggers from hail events
-- Automated campaign enrollment
+### Install the CLI
 
-## 🚀 Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 14, React, TypeScript, Tailwind CSS |
-| Backend | Express.js, Node.js |
-| Database | Supabase (PostgreSQL) |
-| Design | Brutalist UI, Oxanium + Source Code Pro fonts |
-
-## 📦 Quick Start
-
-### Prerequisites
-- Node.js 18+
-- npm or yarn
-
-### Installation
+Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
 
 ```bash
-# Clone the repository
-git clone https://github.com/natelasko528/wisconsin-hail-tracker.git
-cd wisconsin-hail-tracker
-
-# Install all dependencies
-npm install
-
-# Install backend dependencies
-cd backend && npm install
-
-# Install frontend dependencies
-cd ../frontend && npm install
+npm i supabase --save-dev
 ```
 
-### Environment Setup
+When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
 
-Create environment files with your Supabase credentials:
-
-**Backend** (`backend/.env`):
-```env
-PORT=3001
-FRONTEND_URL=http://localhost:3000
-SUPABASE_URL=https://hekxyqhylzczirrbpldx.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
+```
+NODE_OPTIONS=--no-experimental-fetch yarn add supabase
 ```
 
-**Frontend** (`frontend/.env.local`):
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_SUPABASE_URL=https://hekxyqhylzczirrbpldx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-```
+> **Note**
+For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
 
-### Running the Application
+<details>
+  <summary><b>macOS</b></summary>
+
+  Available via [Homebrew](https://brew.sh). To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To install the beta release channel:
+  
+  ```sh
+  brew install supabase/tap/supabase-beta
+  brew link --overwrite supabase-beta
+  ```
+  
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Windows</b></summary>
+
+  Available via [Scoop](https://scoop.sh). To install:
+
+  ```powershell
+  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+  scoop install supabase
+  ```
+
+  To upgrade:
+
+  ```powershell
+  scoop update supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Linux</b></summary>
+
+  Available via [Homebrew](https://brew.sh) and Linux packages.
+
+  #### via Homebrew
+
+  To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+
+  #### via Linux packages
+
+  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
+
+  ```sh
+  sudo apk add --allow-untrusted <...>.apk
+  ```
+
+  ```sh
+  sudo dpkg -i <...>.deb
+  ```
+
+  ```sh
+  sudo rpm -i <...>.rpm
+  ```
+
+  ```sh
+  sudo pacman -U <...>.pkg.tar.zst
+  ```
+</details>
+
+<details>
+  <summary><b>Other Platforms</b></summary>
+
+  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
+
+  ```sh
+  go install github.com/supabase/cli@latest
+  ```
+
+  Add a symlink to the binary in `$PATH` for easier access:
+
+  ```sh
+  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
+  ```
+
+  This works on other non-standard Linux distros.
+</details>
+
+<details>
+  <summary><b>Community Maintained Packages</b></summary>
+
+  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
+  To install in your working directory:
+
+  ```bash
+  pkgx install supabase
+  ```
+
+  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
+</details>
+
+### Run the CLI
 
 ```bash
-# From the root directory, start both servers
-npm run dev
-
-# Or start them separately:
-# Terminal 1: Backend (port 3001)
-cd backend && npm run dev
-
-# Terminal 2: Frontend (port 3000)
-cd frontend && npm run dev
+supabase bootstrap
 ```
 
-### Access Points
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001
-- **Health Check**: http://localhost:3001/health
+Or using npx:
 
-## 🗄️ Database Schema
-
-### Core Tables (Supabase)
-
-| Table | Description |
-|-------|-------------|
-| `storm_events` | NOAA hail event data |
-| `properties` | Property parcel information |
-| `leads` | Lead management with pipeline stages |
-| `notes` | Lead notes and activity |
-| `campaigns` | Marketing campaigns |
-| `campaign_leads` | Campaign-lead associations |
-| `skip_trace_results` | Skip tracing results |
-| `ghl_sync_log` | GoHighLevel sync history |
-| `activity_log` | System activity tracking |
-
-## 📡 API Endpoints
-
-### Hail Events
-- `GET /api/hail` - List hail events with filters
-- `GET /api/hail/stats` - Hail event statistics
-- `GET /api/hail/counties` - List affected counties
-- `GET /api/hail/:id` - Get specific event
-- `POST /api/hail` - Create new event
-
-### Leads
-- `GET /api/leads` - List leads with filters
-- `GET /api/leads/stats` - Lead statistics
-- `GET /api/leads/:id` - Get lead details
-- `POST /api/leads` - Create new lead
-- `PATCH /api/leads/:id` - Update lead
-- `DELETE /api/leads/:id` - Delete lead
-- `POST /api/leads/:id/notes` - Add note to lead
-
-### Campaigns
-- `GET /api/campaigns` - List campaigns
-- `POST /api/campaigns` - Create campaign
-- `POST /api/campaigns/:id/launch` - Launch campaign
-- `POST /api/campaigns/:id/pause` - Pause campaign
-
-### Skip Tracing
-- `POST /api/skiptrace` - Run skip trace
-- `POST /api/skiptrace/batch` - Batch skip trace
-- `GET /api/skiptrace/batch/:id` - Get batch status
-
-### GoHighLevel
-- `POST /api/ghl/sync/contact` - Sync contact to GHL
-- `POST /api/ghl/sync/batch` - Batch sync
-- `GET /api/ghl/sync/logs` - View sync logs
-- `GET /api/ghl/status` - Integration status
-
-### Dashboard
-- `GET /api/stats/dashboard` - Dashboard statistics
-- `GET /api/stats/activity` - Activity feed
-
-## 🎨 Design System
-
-- **Border Radius**: 0px (sharp edges)
-- **Primary Color**: Crimson (#B71C1C)
-- **Accent Color**: Steel Blue (#4682B4)
-- **Typography**: Oxanium (headings), Source Code Pro (body)
-- **Touch Targets**: 44px+ for mobile
-
-## 🔧 Configuration
-
-### Supabase Project
-- **Project ID**: `hekxyqhylzczirrbpldx`
-- **Region**: us-east-1
-- **Database**: PostgreSQL 17
-
-### Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_ANON_KEY` | Public anonymous key |
-| `GHL_API_KEY` | GoHighLevel API key (optional) |
-| `GHL_LOCATION_ID` | GHL location ID (optional) |
-
-## 📁 Project Structure
-
-```
-wisconsin-hail-tracker/
-├── backend/
-│   ├── config/           # Configuration files
-│   ├── lib/              # Supabase client
-│   ├── middleware/       # Express middleware
-│   ├── migrations/       # Database migrations
-│   ├── routes/           # API routes
-│   └── server.js         # Express server
-├── frontend/
-│   ├── app/              # Next.js app directory
-│   ├── components/       # React components
-│   ├── lib/              # Utilities
-│   └── styles/           # CSS styles
-└── README.md
-```
-
-## 🚀 Deployment
-
-### Vercel (Frontend)
 ```bash
-cd frontend
-vercel deploy
+npx supabase bootstrap
 ```
 
-### Railway/Render (Backend)
-Deploy the `/backend` directory with the following settings:
-- Build Command: `npm install`
-- Start Command: `npm start`
-- Environment variables as specified above
+The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
 
-## 📄 License
+## Docs
 
-MIT License - see LICENSE for details.
+Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
 
-## 🤝 Contributing
+## Breaking changes
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
 
----
+However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
 
-Built with ❤️ for Wisconsin roofing contractors
+## Developing
+
+To run from source:
+
+```sh
+# Go >= 1.22
+go run . help
+```
