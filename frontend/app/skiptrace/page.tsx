@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 /**
  * Redirect from /skiptrace to /skip-trace
  * This ensures we have a single skip trace page
  */
-export default function SkiptraceRedirect() {
+function SkiptraceRedirectContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -25,5 +25,20 @@ export default function SkiptraceRedirect() {
         <p className="text-sm text-foreground-muted">Redirecting to Skip Trace...</p>
       </div>
     </div>
+  )
+}
+
+export default function SkiptraceRedirect() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-foreground-muted">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SkiptraceRedirectContent />
+    </Suspense>
   )
 }

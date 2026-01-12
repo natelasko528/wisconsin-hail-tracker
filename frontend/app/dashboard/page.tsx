@@ -26,7 +26,7 @@ export default function DashboardPage() {
 
   const fetchData = () => {
     setLoading(true)
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
     Promise.all([
       fetch(`${apiUrl}/api/stats/dashboard`).then(r => r.json()).catch(() => ({ data: null })),
       fetch(`${apiUrl}/api/leads?limit=10`).then(r => r.json()).catch(() => ({ data: [] }))

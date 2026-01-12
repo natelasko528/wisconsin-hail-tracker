@@ -21,8 +21,8 @@ interface Property {
   city: string
   state: string
   zip_code: string
-  latitude?: number
-  longitude?: number
+  latitude: number
+  longitude: number
   owner_name?: string
   owner_phone?: string
   damage_probability?: number
@@ -103,9 +103,17 @@ export default function CanvassPage() {
       )
       const data = await response.json()
 
-      if (data.success && data.data) {
-        setProperties(data.data)
-        updateStats(data.data)
+      const validProperties = (data.data || []).filter((p: any) => 
+        p.latitude && p.longitude && !isNaN(parseFloat(p.latitude)) && !isNaN(parseFloat(p.longitude))
+      ).map((p: any) => ({
+        ...p,
+        latitude: parseFloat(p.latitude),
+        longitude: parseFloat(p.longitude)
+      }))
+
+      if (data.success) {
+        setProperties(validProperties)
+        updateStats(validProperties)
       }
     } catch (error) {
       console.error('Error fetching properties:', error)
