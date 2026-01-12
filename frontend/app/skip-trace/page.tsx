@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import AppLayout from '@/components/AppLayout'
 import { 
@@ -67,7 +67,8 @@ interface Lead {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-export default function SkipTraceCenterPage() {
+// Content component with main logic
+function SkipTraceCenterContent() {
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<'single' | 'batch' | 'results'>('single')
   const [isLoading, setIsLoading] = useState(false)
@@ -710,5 +711,20 @@ export default function SkipTraceCenterPage() {
         </main>
       </div>
     </AppLayout>
+  )
+}
+
+// Main page component wrapped in Suspense
+export default function SkipTraceCenterPage() {
+  return (
+    <Suspense fallback={
+      <AppLayout>
+        <div className="h-screen flex items-center justify-center">
+          <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </AppLayout>
+    }>
+      <SkipTraceCenterContent />
+    </Suspense>
   )
 }

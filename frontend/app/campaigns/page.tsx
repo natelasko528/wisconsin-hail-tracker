@@ -10,7 +10,7 @@ export default function CampaignsPage() {
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null)
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
     fetch(`${apiUrl}/api/campaigns`)
       .then(res => res.json())
       .then(data => { 

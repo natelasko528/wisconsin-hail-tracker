@@ -2,7 +2,8 @@
  * API client with error handling and token management
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Use relative URLs in production, absolute URL only for local development
+const API_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? '' : 'http://localhost:3001');
 
 export class APIError extends Error {
   constructor(
@@ -62,7 +63,13 @@ async function request<T>(
   if (requiresAuth) {
     const token = getToken();
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      if (headers instanceof Headers) {
+        headers.set('Authorization', `Bearer ${token}`)
+      } else if (Array.isArray(headers)) {
+        headers.push(['Authorization', `Bearer ${token}`])
+      } else {
+        (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+      }
     }
   }
 
